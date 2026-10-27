@@ -1,0 +1,21 @@
+{
+  "name": "ecotrack",
+  "version": "1.0.0",
+  "description": "EcoTrack - a personal carbon footprint tracker with smart reduction tips (sustainability hackathon project)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed": "node scripts/seed.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^11.7.0 || ^12.0.0",
+    "express": "^4.21.0",
+    "dotenv": "^16.4.7"
+  }
+}

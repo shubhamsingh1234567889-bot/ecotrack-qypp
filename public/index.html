@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EcoTrack</title>
+  <meta name="description" content="Track your carbon footprint and get personalised tips to reduce it." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo">🌱</span> EcoTrack</div>
+    <div class="topbar-right">
+      <span id="userName" class="user-name"></span>
+      <button id="switchUser" class="btn ghost small" hidden>Switch user</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Onboarding -->
+    <section id="welcome" class="card welcome" hidden>
+      <h1>Know your footprint.<br />Shrink it, one day at a time.</h1>
+      <p>Log your travel, food, energy and waste. EcoTrack turns it into a score, a forecast and practical swaps that can save CO₂ and money.</p>
+      <div class="welcome-art"><img src="assets/eco-city.svg" alt="Illustration of a greener city with trees and clean energy" /></div>
+      <form id="welcomeForm" class="inline-form welcome-form">
+        <input id="nameInput" type="text" placeholder="Your name" minlength="2" maxlength="30" required autocomplete="given-name" />
+        <select id="profileType" aria-label="Choose your profile"><option value="individual">Individual</option><option value="business">Business / Entrepreneur</option></select>
+        <input id="businessName" type="text" placeholder="Business or organization name" maxlength="80" hidden />
+        <button class="btn primary" type="submit">Get started</button>
+      </form>
+      <p id="welcomeError" class="error" role="alert"></p>
+    </section>
+
+    <!-- App -->
+    <div id="app" hidden>
+      <section id="profileBanner" class="card profile-banner" hidden>
+        <div><p class="eyebrow">BUSINESS WORKSPACE</p><h2 id="profileHeading">Business sustainability planner</h2><p class="hint">Estimate operational emissions, explore energy alternatives and prepare a practical action plan. Estimates are for planning, not audited reporting.</p></div>
+        <img src="assets/solar-office.svg" alt="Office building powered by rooftop solar panels" />
+      </section>
+
+      <section class="stats">
+        <article class="card stat"><span class="stat-label">Today</span><span class="stat-value" id="statToday">–</span><span class="stat-sub">kg CO₂e</span></article>
+        <article class="card stat"><span class="stat-label">7-day average</span><span class="stat-value" id="statAvg">–</span><span class="stat-sub" id="statGoal">kg CO₂e / day</span></article>
+        <article class="card stat"><span class="stat-label">Eco score</span><span class="stat-value" id="statScore">–</span><span class="stat-sub" id="statScoreLabel"></span></article>
+        <article class="card stat"><span class="stat-label">Green streak</span><span class="stat-value" id="statStreak">–</span><span class="stat-sub">days within goal</span></article>
+      </section>
+
+      <section class="impact-dashboard" aria-labelledby="impactTitle">
+        <div class="impact-intro">
+          <div><p class="eyebrow">YOUR IMPACT AT A GLANCE</p><h2 id="impactTitle">EcoTrack impact dashboard</h2></div>
+          <p class="hint">Personalize the estimates below. Sector shares use your logged emissions; income and energy mix are user-entered estimates, not verified financial or utility data.</p>
+        </div>
+        <div class="impact-grid">
+          <article class="card impact-card income-card">
+            <div class="section-heading"><div><p class="eyebrow">FINANCIAL PROGRESS</p><h3>Income before vs after</h3></div><span class="impact-icon">↗</span></div>
+            <p class="hint">Compare monthly income before EcoTrack and your current income after applying changes. Enter your own figures.</p>
+            <div class="income-inputs">
+              <label>Before (₹/month)<input id="incomeBefore" type="number" min="0" max="1000000000" step="any" value="30000" /></label>
+              <label>After (₹/month)<input id="incomeAfter" type="number" min="0" max="1000000000" step="any" value="33000" /></label>
+            </div>
+            <div class="chart-box impact-income-chart"><canvas id="incomeChart" role="img" aria-label="User-entered monthly income before and after using EcoTrack"></canvas></div>
+            <p id="incomeDelta" class="impact-summary" aria-live="polite"></p>
+          </article>
+
+          <article class="card impact-card sector-card">
+            <div class="section-heading"><div><p class="eyebrow">EMISSIONS BREAKDOWN</p><h3>Which sectors use your footprint?</h3></div><span class="impact-icon">◌</span></div>
+            <p class="hint">Each circle shows a sector's share of your logged CO₂e emissions over the last 7 days.</p>
+            <div id="sectorCircles" class="sector-circles" aria-live="polite"></div>
+            <p id="sectorSummary" class="impact-summary"></p>
+          </article>
+
+          <article class="card impact-card energy-mix-card">
+            <div class="section-heading"><div><p class="eyebrow">ENERGY MIX</p><h3>Polluting vs clean energy</h3></div><span class="impact-icon">⚡</span></div>
+            <p class="hint">Set the estimated share of your energy from clean sources. The remaining share is shown as polluting energy.</p>
+            <div class="energy-mix-layout">
+              <div id="energyMixRing" class="energy-mix-ring" role="img" aria-label="Estimated clean and polluting energy share"><div><strong id="cleanPercentLabel">30%</strong><span>clean energy</span></div></div>
+              <div class="energy-legend"><div><span class="legend-dot dirty"></span><span>Polluting energy</span><strong id="dirtyPercentLabel">70%</strong></div><div><span class="legend-dot clean"></span><span>Clean energy</span><strong id="cleanLegendLabel">30%</strong></div></div>
+            </div>
+            <label class="range-label" for="cleanEnergyShare">Clean energy share <strong id="cleanSliderLabel">30%</strong></label>
+            <input id="cleanEnergyShare" class="energy-range" type="range" min="0" max="100" value="30" />
+            <p class="hint">Illustrative estimate. Use your electricity bill, provider mix or renewable-energy records for a more accurate figure.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="card environmental-card">
+        <div class="section-heading"><div><p class="eyebrow">LIVE ENVIRONMENT</p><h2>Pollution intelligence</h2></div><span class="pill">OpenWeather</span></div>
+        <p class="hint">Search a city or area to view the latest available air-pollution reading. This is separate from your personal carbon footprint.</p>
+        <form id="pollutionForm" class="inline-form pollution-form">
+          <input id="cityInput" type="text" placeholder="e.g. Ghaziabad, IN" minlength="2" maxlength="100" required aria-label="City or area" />
+          <button class="btn primary" type="submit">Check air quality</button>
+          <button id="pollutionForecastBtn" class="btn secondary" type="button">View 5-day forecast</button>
+        </form>
+        <p id="pollutionError" class="error" role="alert"></p>
+        <div id="pollutionResult" class="pollution-result" hidden aria-live="polite"></div>
+        <section id="pollutionForecastResult" class="pollution-result forecast-result" hidden aria-live="polite">
+          <div class="pollution-heading"><h3 id="forecastTitle">Air pollution forecast</h3><span class="pill">Hourly forecast</span></div>
+          <p id="forecastMeta" class="hint"></p>
+          <div class="chart-box"><canvas id="pollutionForecastChart" role="img" aria-label="Forecast air quality index and PM2.5 over time"></canvas></div>
+          <p id="forecastNote" class="hint"></p>
+        </section>
+      </section>
+
+      <div class="grid">
+        <section class="card">
+          <h2>Log an activity</h2>
+          <form id="logForm" class="form">
+            <label>Category
+              <select id="category"></select>
+            </label>
+            <label>Activity
+              <select id="type"></select>
+            </label>
+            <label><span id="qtyLabel">Quantity</span>
+              <input id="quantity" type="number" min="0.1" step="any" value="1" required />
+            </label>
+            <label>Date
+              <input id="date" type="date" required />
+            </label>
+            <p class="hint" id="preview"></p>
+            <button class="btn primary" type="submit">Add activity</button>
+            <p id="logError" class="error" role="alert"></p>
+          </form>
+        </section>
+
+        <section class="card">
+          <h2>Last 14 days</h2>
+          <div class="chart-box"><canvas id="trendChart" aria-label="Daily emissions trend with forecast" role="img"></canvas></div>
+          <p class="hint" id="forecastNote"></p>
+        </section>
+
+        <section class="card">
+          <h2>Where it comes from <small>(last 7 days)</small></h2>
+          <div class="chart-box small"><canvas id="catChart" aria-label="Emissions by category" role="img"></canvas></div>
+          <p class="hint" id="catEmpty" hidden>Nothing logged in the last 7 days.</p>
+        </section>
+
+        <section class="card">
+          <h2>Your best swaps</h2>
+          <ul id="tips" class="tips"></ul>
+        </section>
+
+        <section class="card">
+          <div class="section-heading"><h2>AI-style Eco-Coach</h2><button id="refreshCoach" class="btn small" type="button">Refresh ideas</button></div>
+          <p class="hint">Personalized, rule-based suggestions from your logged activity. Estimates are not official carbon accounting.</p>
+          <ul id="coachIdeas" class="tips"></ul>
+        </section>
+
+        <section class="card">
+          <h2>Energy & cost simulator</h2>
+          <p class="hint">Estimate the impact of reducing your electricity use. Change the values to compare a scenario.</p>
+          <form id="energyForm" class="form">
+            <label>Monthly electricity use (kWh)<input id="energyKwh" type="number" min="0" max="100000" step="any" value="200" required /></label>
+            <label>Reduction target (%)<input id="energyPercent" type="number" min="1" max="90" value="10" required /></label>
+            <label>Electricity price (₹/kWh)<input id="energyRate" type="number" min="0" max="1000" step="any" value="8" required /></label>
+            <button class="btn" type="submit">Calculate impact</button>
+          </form>
+          <div id="energyResult" class="sim-result" aria-live="polite">Enter your values to estimate savings.</div>
+        </section>
+
+        <section class="card solar-card">
+          <div class="section-heading"><h2>Solar energy savings planner</h2><span class="pill">Illustrative estimate</span></div>
+          <img class="feature-image" src="assets/solar-panels.svg" alt="Solar panels collecting sunlight" loading="lazy" />
+          <p class="hint">Explore how rooftop solar might affect your electricity bill. Enter your bill and an assumed system size; use local installer quotes and your tariff for an investment decision.</p>
+          <form id="solarForm" class="form">
+            <label>Monthly electricity bill (₹)<input id="solarBill" type="number" min="0" max="10000000" value="4000" required /></label>
+            <label>Solar system size (kW)<input id="solarKw" type="number" min="0.5" max="10000" step="0.5" value="3" required /></label>
+            <label>Installed cost (₹/kW)<input id="solarCost" type="number" min="1" max="1000000" value="55000" required /></label>
+            <label>Monthly bill offset (%)<input id="solarOffset" type="number" min="1" max="100" value="70" required /></label>
+            <button class="btn primary" type="submit">Estimate solar payback</button>
+          </form>
+          <div id="solarResult" class="sim-result" aria-live="polite">Enter your assumptions to estimate savings.</div>
+          <div class="chart-box small"><canvas id="solarChart" aria-label="Estimated annual electricity bill before and after solar" role="img"></canvas></div>
+        </section>
+
+        <section class="card carbon-credit-card">
+          <div class="section-heading"><h2>Carbon credits, explained</h2><span class="pill">Learn before you buy</span></div>
+          <img class="feature-image credit-image" src="assets/carbon-credits.svg" alt="Illustration representing verified carbon reduction and carbon credits" loading="lazy" />
+          <p>A <strong>carbon credit</strong> generally represents one metric tonne of CO₂ equivalent reduced or removed under a defined program. Credits are not the same as reducing your own emissions, and quality varies.</p>
+          <div class="credit-steps">
+            <article><span>01</span><strong>Measure first</strong><p>Estimate your footprint and reduce avoidable emissions before considering credits.</p></article>
+            <article><span>02</span><strong>Check the standard</strong><p>Look for independent verification, clear project details, additionality, permanence and safeguards.</p></article>
+            <article><span>03</span><strong>Check the registry</strong><p>Confirm serial numbers, ownership and retirement status. Avoid double counting and guaranteed-return claims.</p></article>
+          </div>
+          <p class="hint">EcoTrack does not issue credits or certify projects. A personal footprint estimate alone is not enough to calculate credits eligible for sale. Businesses should consult a qualified carbon-accounting professional for formal claims.</p>
+        </section>
+
+        <section class="card wide report-recommendations">
+          <div class="section-heading"><h2>Recommended next steps for your report</h2><span class="pill">Personalized action plan</span></div>
+          <p class="hint">These suggestions update from the activities you've logged and your energy assumptions. Print / PDF report includes this action plan.</p>
+          <ul id="reportActions" class="tips"></ul>
+        </section>
+
+        <section class="card">
+          <div class="section-heading"><h2>Weekly eco-challenges</h2><span class="pill">Community</span></div>
+          <p class="hint">Complete small, practical actions. Progress is saved in this browser for this profile.</p>
+          <div id="challenges" class="challenges"></div>
+          <p id="challengeSummary" class="hint"></p>
+        </section>
+
+        <section class="card">
+          <h2>What if…?</h2>
+          <form id="simForm" class="form">
+            <label>Category
+              <select id="simCategory"></select>
+            </label>
+            <div class="row">
+              <label>Replace
+                <select id="simFrom"></select>
+              </label>
+              <label>With
+                <select id="simTo"></select>
+              </label>
+            </div>
+            <label><span id="simQtyLabel">Amount</span>
+              <input id="simQty" type="number" min="1" step="any" value="100" required />
+            </label>
+            <button class="btn" type="submit">Calculate saving</button>
+          </form>
+          <p id="simResult" class="sim-result" aria-live="polite"></p>
+        </section>
+
+        <section class="card">
+          <h2>Leaderboard</h2>
+          <ol id="board" class="board"></ol>
+          <form id="goalForm" class="inline-form goal">
+            <label>Daily goal (kg CO₂e)
+              <input id="goalInput" type="number" min="1" max="100" step="0.5" required />
+            </label>
+            <button class="btn small" type="submit">Save goal</button>
+          </form>
+        </section>
+
+        <section class="card wide">
+          <div class="section-heading"><h2>Recent activity</h2><div class="action-row"><button id="exportCsv" class="btn small" type="button">Export CSV</button><button id="printReport" class="btn small" type="button">Print / PDF report</button></div></div>
+          <ul id="recent" class="recent"></ul>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    Emission factors are rounded public averages for awareness, not official carbon accounting.
+  </footer>
+</body>
+</html>
